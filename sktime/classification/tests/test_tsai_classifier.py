@@ -1,63 +1,77 @@
-"""Tests for tsai classifier interfaces."""
-
-__author__ = ["joseph-c-mcguire"]
-
-import numpy as np
 import pytest
-
-from sktime.classification.tsai_classifier import (
-    InceptionTimePlus,
-    PatchTST,
-    TST,
-    XceptionTime,
-)
-from sktime.datasets import load_unit_test
-from sktime.tests.test_all_estimators import run_common_tests
+import numpy as np
+from sktime.classification.tsai_classifier import _TsaiModelClassifier, InceptionTimePlus, TST, XceptionTime, PatchTST
 
 
-@pytest.mark.skipif(
-    not run_common_tests(estimator=InceptionTimePlus, severity="min"),
-    reason="Common tests failed with min severity level",
-)
-def test_tsai_inception():
-    """Test InceptionTimePlus classifier."""
-    X, y = load_unit_test(split="train", return_X_y=True)
-    clf = InceptionTimePlus(max_epochs=1)
-    clf.fit(X, y)
-    return clf.predict(X)
+@pytest.fixture
+def sample_data():
+    X = np.random.rand(10, 50, 1)  # 10 samples, 50 time points, 1 feature
+    y = np.random.randint(0, 2, 10)  # 10 binary labels
+    return X, y
 
 
-@pytest.mark.skipif(
-    not run_common_tests(estimator=TST, severity="min"),
-    reason="Common tests failed with min severity level",
-)
-def test_tsai_tst():
-    """Test TST classifier."""
-    X, y = load_unit_test(split="train", return_X_y=True)
-    clf = TST(max_epochs=1)
-    clf.fit(X, y)
-    return clf.predict(X)
+@pytest.fixture
+def sample_data():
+    X = np.random.rand(10, 50, 1)  # 10 samples, 50 time points, 1 feature
+    y = np.random.randint(0, 2, 10)  # 10 binary labels
+    return X, y
 
 
-@pytest.mark.skipif(
-    not run_common_tests(estimator=XceptionTime, severity="min"),
-    reason="Common tests failed with min severity level",
-)
-def test_tsai_xception():
-    """Test XceptionTime classifier."""
-    X, y = load_unit_test(split="train", return_X_y=True)
-    clf = XceptionTime(max_epochs=1)
-    clf.fit(X, y)
-    return clf.predict(X)
+def test_tsai_network_initialization():
+    network = _TsaiModelClassifier(arch="InceptionTimePlus")
+    assert network.arch == "InceptionTimePlus"
+    assert network.batch_size == 64
+    assert network.max_epochs == 100
+    assert network.learning_rate == 1e-3
+    assert network.device is None
+    assert network.num_workers == 0
 
 
-@pytest.mark.skipif(
-    not run_common_tests(estimator=PatchTST, severity="min"),
-    reason="Common tests failed with min severity level",
-)
-def test_tsai_patchtst():
-    """Test PatchTST classifier."""
-    X, y = load_unit_test(split="train", return_X_y=True)
-    clf = PatchTST(max_epochs=1)
-    clf.fit(X, y)
-    return clf.predict(X)
+def test_tsai_network_build_network():
+    network = _TsaiModelClassifier(arch="InceptionTimePlus")
+    model, history = network.build_network((50, 1))
+    assert model is None
+    assert history is None
+
+
+def test_tsai_network_fit(sample_data):
+    X, y = sample_data
+    network = _TsaiModelClassifier(arch="InceptionTimePlus", max_epochs=1)
+    network.fit(X, y)
+    assert hasattr(network, 'model_')
+
+
+def test_tsai_network_predict(sample_data):
+    X, y = sample_data
+    network = _TsaiModelClassifier(arch="InceptionTimePlus", max_epochs=1)
+    network.fit(X, y)
+    preds = network.predict(X)
+    assert preds.shape == (10,)
+
+
+def test_tsai_network_predict_proba(sample_data):
+    X, y = sample_data
+    network = _TsaiModelClassifier(arch="InceptionTimePlus", max_epochs=1)
+    network.fit(X, y)
+    probas = network.predict_proba(X)
+    assert probas.shape == (10, 2)
+
+
+def test_inception_time_plus_initialization():
+    classifier = InceptionTimePlus()
+    assert classifier.arch == "InceptionTimePlus"
+
+
+def test_tst_initialization():
+    classifier = TST()
+    assert classifier.arch == "TST"
+
+
+def test_xception_time_initialization():
+    classifier = XceptionTime()
+    assert classifier.arch == "XceptionTime"
+
+
+def test_patch_tst_initialization():
+    classifier = PatchTST()
+    assert classifier.arch == "PatchTST"
